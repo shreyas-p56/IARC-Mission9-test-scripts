@@ -70,8 +70,14 @@ class FLIGHT_CONTROLLER:
 		rospy.loginfo('INIT')
 
 		self.transform = np.zeros((3, 3))
+		self.disp = np.array([0,0,0]).T
 		time.sleep(2)
 		self.transform = self.get_rotmat()
+		print(self.transform)
+		print(self.disp)
+		self.disp = np.dot(self.transform, self.pose)
+		print(self.disp)
+		self.disp = np.array([2,3,4])
 
 	
 	def get_rotmat(self):
@@ -94,7 +100,6 @@ class FLIGHT_CONTROLLER:
 		except rospy.ServiceException as e:
 			rospy.loginfo("Service call failed: " %e)
 	
-	
 	def land(self, l_alt):
 		rospy.wait_for_service('/mavros/cmd/land')
 		try:
@@ -102,7 +107,6 @@ class FLIGHT_CONTROLLER:
 			rospy.loginfo("LANDING")
 		except rospy.ServiceException as e:
 			rospy.loginfo("Service call failed: " %e)
-
 
 	def set_mode(self,md):
 			rospy.wait_for_service('/mavros/set_mode')
@@ -126,7 +130,7 @@ class FLIGHT_CONTROLLER:
 
 	def get_pose(self, location_data):
 		pose = location_data.pose.position
-		self.pose = np.dot(self.transform.T, np.array([pose.x, pose.y, pose.z]).T)
+		self.pose = np.dot(self.transform.T, np.array([pose.x, pose.y, pose.z]).T - self.disp)
 
 	def get_vel(self, vel_data):
 		vel = vel_data.twist.linear
@@ -147,7 +151,7 @@ class FLIGHT_CONTROLLER:
 		
 		rate = rospy.Rate(20)
 		sp = PoseStamped()
-		pose_tar_mod = np.dot(self.transform, pose_tar)
+		pose_tar_mod = self.disp + np.dot(self.transform, pose_tar)
 
 		sp.pose.position.x = pose_tar_mod[0]
 		sp.pose.position.y = pose_tar_mod[1]
@@ -233,7 +237,7 @@ if __name__ == '__main__':
 
 	#unpickle the trajectory from its file
 
-	pickle_off = open("3D.txt", "rb")			#modify the first input in open() to be the location of the trajectory file, and default is in home
+	pickle_off = open("Documents/IARC/5D10_t.txt", "rb")			#modify the first input in open() to be the location of the trajectory file, and default is in home
 	gen = pickle.load(pickle_off)
 
 	[x_path, x_dot_path, x_ddot_path, y_path, y_dot_path, y_ddot_path, z_path, z_dot_path, z_ddot_path, psi_path] = gen
@@ -247,7 +251,7 @@ if __name__ == '__main__':
 	mav.set_Guided_mode()
 	mav.takeoff(z_path[0])
 	time.sleep(3)
-	mav.gotopose(np.array([x_path[0],y_path[0],z_path[0]]).T)
+	#mav.gotopose(np.array([x_path[0],y_path[0],z_path[0]]).T)
 	
 	m = 1.5													# mass of the quadrotor
 	alpha_1 = 0.25											
